@@ -333,24 +333,27 @@
     function createVideoCard(video) {
         const card = document.createElement('div');
         card.className = 'video-page-card-small custom-recommend-card';
-        card.style.cssText = 'margin-bottom: 12px; cursor: pointer; border: 2px solid #00a1d6; border-radius: 4px; padding: 4px; background: #f0f9ff;';
+        card.style.cssText = 'margin-bottom: 12px; cursor: pointer !important; border: 2px solid #00a1d6; border-radius: 4px; padding: 4px; background: #f0f9ff; position: relative; pointer-events: auto !important;';
+        card.setAttribute('data-bvid', video.bvid);
+
+        const videoUrl = `https://www.bilibili.com/video/${video.bvid}`;
 
         card.innerHTML = `
-            <a href="https://www.bilibili.com/video/${video.bvid}" target="_blank" style="display: flex; text-decoration: none; color: inherit;">
+            <div style="display: flex; text-decoration: none; color: inherit; position: relative; z-index: 1; pointer-events: none;">
                 <div style="position: relative; width: 160px; height: 90px; flex-shrink: 0; border-radius: 4px; overflow: hidden;">
-                    <img src="${video.pic}@160w_90h_1c.webp" style="width: 100%; height: 100%; object-fit: cover;" />
-                    <div style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.7); color: white; padding: 2px 4px; border-radius: 2px; font-size: 12px;">
+                    <img src="${video.pic}@160w_90h_1c.webp" style="width: 100%; height: 100%; object-fit: cover; pointer-events: none;" />
+                    <div style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.7); color: white; padding: 2px 4px; border-radius: 2px; font-size: 12px; pointer-events: none;">
                         ${formatDuration(video.length.split(':').reduce((acc, time) => (60 * acc) + +time, 0))}
                     </div>
-                    <div style="position: absolute; top: 4px; left: 4px; background: #00a1d6; color: white; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: bold;">
+                    <div style="position: absolute; top: 4px; left: 4px; background: #00a1d6; color: white; padding: 2px 6px; border-radius: 2px; font-size: 11px; font-weight: bold; pointer-events: none;">
                         推荐
                     </div>
                 </div>
                 <div style="flex: 1; margin-left: 8px; display: flex; flex-direction: column; justify-content: space-between; min-width: 0;">
-                    <div style="font-size: 13px; line-height: 18px; max-height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-all; color: #212121; font-weight: 500;">
+                    <div style="font-size: 13px; line-height: 18px; max-height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-all; color: #212121; font-weight: 500; pointer-events: none;">
                         ${video.title}
                     </div>
-                    <div style="font-size: 12px; color: #999;">
+                    <div style="font-size: 12px; color: #999; pointer-events: none;">
                         <div style="margin-bottom: 2px;">${video.author}</div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span>▶ ${formatPlayCount(video.play)}</span>
@@ -358,8 +361,34 @@
                         </div>
                     </div>
                 </div>
-            </a>
+            </div>
         `;
+
+        // 使用捕获阶段的事件监听，优先级更高
+        const clickHandler = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log('点击了视频:', video.title, videoUrl);
+            window.open(videoUrl, '_blank');
+        };
+
+        // 同时添加多种事件监听，确保能捕获到点击
+        card.addEventListener('click', clickHandler, true); // 捕获阶段
+        card.addEventListener('click', clickHandler, false); // 冒泡阶段
+        card.addEventListener('mousedown', clickHandler, true);
+
+        // 鼠标悬停效果
+        card.addEventListener('mouseenter', function() {
+            card.style.background = '#e6f7ff';
+            card.style.transform = 'translateY(-2px)';
+            card.style.transition = 'all 0.2s ease';
+        });
+
+        card.addEventListener('mouseleave', function() {
+            card.style.background = '#f0f9ff';
+            card.style.transform = 'translateY(0)';
+        });
 
         return card;
     }

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         B站自定义推荐视频
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  在B站视频播放页右侧推荐区域添加指定UP主的视频
 // @author       You
 // @match        https://www.bilibili.com/video/*
@@ -24,7 +24,7 @@
     ];
 
     // 推荐视频数量
-    const RECOMMEND_COUNT = 5;
+    const RECOMMEND_COUNT = 15;
     // ==============================
 
     // 存储获取到的视频

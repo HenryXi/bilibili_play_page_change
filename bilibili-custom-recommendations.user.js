@@ -8,8 +8,8 @@
 // @grant        GM_xmlhttpRequest
 // @connect      api.bilibili.com
 // @run-at       document-end
-// @updateURL    https://github.com/HenryXi/bilibili_play_page_change/raw/refs/heads/main/bilibili-custom-recommendations.user.js
-// @downloadURL  https://github.com/HenryXi/bilibili_play_page_change/raw/refs/heads/main/bilibili-custom-recommendations.user.js
+// @updateURL    https://rawgithubusercontent.com/HenryXi/bilibili_play_page_change/raw/refs/heads/main/bilibili-custom-recommendations.user.js
+// @downloadURL  https://rawgithubusercontent.com/HenryXi/bilibili_play_page_change/raw/refs/heads/main/bilibili-custom-recommendations.user.js
 // @supportURL   https://github.com/HenryXi/bilibili_play_page_change/issues
 // ==/UserScript==
 

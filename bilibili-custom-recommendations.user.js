@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         B站自定义推荐视频
 // @namespace    http://tampermonkey.net/
-// @version      1.1.2
+// @version      1.3.0
 // @description  在B站视频播放页右侧推荐区域添加指定UP主的视频
 // @author       You
 // @match        https://www.bilibili.com/video/*
@@ -19,16 +19,27 @@
     // ========== 配置区域 ==========
     // 在这里添加你想要推荐的UP主的UID（mid）
     const TARGET_UP_MIDS = [
-        '326427334','254463269','192063031','26108626','1537646108','3546856531429665','1423802684'
-        
+        '326427334','254463269','192063031','26108626','1537646108','1423802684'
+
     ];
 
     // 推荐视频数量
     const RECOMMEND_COUNT = 15;
+    // 原始推荐视频保留数量
+    const ORIGINAL_RECOMMEND_COUNT = 5;
     // ==============================
 
     // 存储获取到的视频
     let allVideos = [];
+
+    // 添加CSS样式，提前隐藏原始推荐视频
+    const style = document.createElement('style');
+    style.textContent = `
+        .bpx-player-ending-related-item:not(.custom-end-recommend) {
+            display: none !important;
+        }
+    `;
+    document.head.appendChild(style);
 
     // WBI签名相关
     const mixinKeyEncTab = [
@@ -396,6 +407,22 @@
         return card;
     }
 
+    // 限制原始推荐视频数量
+    function limitOriginalRecommendations() {
+        // 查找右侧推荐区域的所有原始视频卡片
+        const videoCards = document.querySelectorAll('.video-page-card-small:not(.custom-recommend-card)');
+
+        if (videoCards.length > ORIGINAL_RECOMMEND_COUNT) {
+            // 隐藏超过限制数量的视频卡片
+            videoCards.forEach((card, index) => {
+                if (index >= ORIGINAL_RECOMMEND_COUNT) {
+                    card.style.display = 'none';
+                }
+            });
+            console.log(`✅ 已限制原始推荐视频为 ${ORIGINAL_RECOMMEND_COUNT} 个`);
+        }
+    }
+
     // 注入自定义推荐视频
     function injectCustomRecommendations() {
         // 查找右侧推荐区域
@@ -442,7 +469,175 @@
             container.appendChild(customSection);
         }
 
+        // 限制原始推荐视频数量
+        limitOriginalRecommendations();
+
         console.log(`✅ 已添加 ${selectedVideos.length} 个自定义推荐视频`);
+        return true;
+    }
+
+    // 替换播放器上方的推荐视频
+    function replacePlayerEndRecommendations() {
+        // 尝试多个可能的选择器
+        const selectors = [
+            '.bpx-player-ending-related',
+            '.bpx-player-ending-content',
+            '.bpx-player-ending-panel',
+            '.bpx-player-ending-related-item',
+            '.bpx-player-ending',
+            '[class*="ending-related"]',
+            '[class*="ending-content"]'
+        ];
+
+        let endRecommendContainer = null;
+        for (const selector of selectors) {
+            endRecommendContainer = document.querySelector(selector);
+            if (endRecommendContainer) {
+                console.log('找到播放器结束推荐区域，使用选择器:', selector);
+                break;
+            }
+        }
+
+        if (!endRecommendContainer) {
+            console.log('未找到播放器结束推荐区域，尝试的选择器:', selectors);
+            return false;
+        }
+
+        // 检查是否已经替换过
+        if (endRecommendContainer.querySelector('.custom-end-recommend')) {
+            console.log('已经替换过推荐视频');
+            return true;
+        }
+
+        // 立即隐藏所有原始推荐视频项
+        const allOriginalItems = document.querySelectorAll('.bpx-player-ending-related-item');
+        allOriginalItems.forEach(item => {
+            item.style.display = 'none';
+        });
+
+        // 隐藏UP主信息、充电、关注、好评投币等元素（但不隐藏推荐视频容器）
+        const elementsToHide = [
+            '.bpx-player-ending-functions',
+            '.bpx-player-ending-interaction-swiper'
+        ];
+
+        elementsToHide.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                el.style.display = 'none';
+                console.log('隐藏元素:', selector);
+            });
+        });
+
+        // 清空原有内容
+        endRecommendContainer.innerHTML = '';
+        endRecommendContainer.className += ' custom-end-recommend';
+        // 保持原始样式，不修改容器的CSS
+        endRecommendContainer.style.cssText = '';
+
+        // 随机选择6个视频
+        const selectedVideos = shuffleArray(allVideos).slice(0, 6);
+        selectedVideos.forEach(video => {
+            // 创建一个模仿B站原始样式的视频卡片
+            const videoCard = document.createElement('a');
+            videoCard.className = 'bpx-player-ending-related-item custom-end-recommend';
+            videoCard.href = `https://www.bilibili.com/video/${video.bvid}`;
+            videoCard.setAttribute('data-bvid', video.bvid);
+
+            const videoUrl = `https://www.bilibili.com/video/${video.bvid}`;
+
+            // 截断标题，限制为10个字符
+            const truncatedTitle = video.title.length > 10 ? video.title.substring(0, 10) + '...' : video.title;
+
+            videoCard.innerHTML = `
+                <div class="bpx-player-ending-related-item-img">
+                    <img src="${video.pic}@320w_200h_1c.webp" style="width: 100%; height: 100%; object-fit: cover;" />
+                </div>
+                <div class="bpx-player-ending-related-item-title">${truncatedTitle}</div>
+            `;
+
+            // 使用多种方式确保点击事件能够触发
+            const clickHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                console.log('🎯 点击了推荐视频:', video.title, videoUrl);
+                // 直接跳转到新视频
+                window.location.href = videoUrl;
+                return false;
+            };
+
+            // 在捕获和冒泡阶段都添加监听器
+            videoCard.addEventListener('click', clickHandler, true);
+            videoCard.addEventListener('click', clickHandler, false);
+
+            // 添加测试用的鼠标移入事件，确认元素可以接收事件
+            videoCard.addEventListener('mouseenter', function() {
+                console.log('🖱️ 鼠标移入视频卡片:', video.title);
+            });
+
+            endRecommendContainer.appendChild(videoCard);
+        });
+
+        console.log('✅ 已替换播放器结束推荐视频');
+        return true;
+    }
+
+    // 监听视频播放结束事件
+    function setupVideoEndListener() {
+        // 尝试获取视频播放器
+        const video = document.querySelector('video');
+
+        if (!video) {
+            console.log('未找到视频元素，稍后重试...');
+            return false;
+        }
+
+        // 检查是否已经添加过监听器
+        if (video.dataset.endListenerAdded) {
+            return true;
+        }
+
+        // 提前隐藏原始推荐视频，避免闪现
+        video.addEventListener('timeupdate', function() {
+            // 当视频播放到最后2秒时，提前隐藏原始推荐视频
+            if (video.duration - video.currentTime <= 2 && video.duration > 0) {
+                const originalItems = document.querySelectorAll('.bpx-player-ending-related-item:not(.custom-end-recommend)');
+                originalItems.forEach(item => {
+                    if (!item.classList.contains('custom-end-recommend')) {
+                        item.style.opacity = '0';
+                        item.style.pointerEvents = 'none';
+                    }
+                });
+            }
+        });
+
+        video.addEventListener('ended', function() {
+            console.log('🎬 视频播放完成，准备替换推荐视频...');
+            console.log('当前页面所有class包含ending的元素:', document.querySelectorAll('[class*="ending"]'));
+
+            // 等待播放器结束界面出现
+            setTimeout(() => {
+                let retryCount = 0;
+                const maxRetries = 10;
+
+                const tryReplace = setInterval(() => {
+                    retryCount++;
+                    console.log(`尝试替换推荐视频，第 ${retryCount} 次...`);
+
+                    if (replacePlayerEndRecommendations()) {
+                        clearInterval(tryReplace);
+                    } else if (retryCount >= maxRetries) {
+                        console.warn('⚠️ 未能找到播放器结束推荐区域');
+                        console.log('页面所有元素:', document.body.innerHTML.substring(0, 1000));
+                        clearInterval(tryReplace);
+                    }
+                }, 300);
+            }, 100); // 减少延迟时间，更快替换
+        });
+
+        video.dataset.endListenerAdded = 'true';
+        console.log('✅ 已添加视频结束监听器');
         return true;
     }
 
@@ -487,6 +682,21 @@
                 } else if (retryCount >= maxRetries) {
                     console.warn('⚠️ 达到最大重试次数，停止尝试');
                     clearInterval(tryInject);
+                }
+            }, 500);
+
+            // 设置视频结束监听器
+            let videoRetryCount = 0;
+            const videoMaxRetries = 20;
+
+            const trySetupListener = setInterval(() => {
+                videoRetryCount++;
+
+                if (setupVideoEndListener()) {
+                    clearInterval(trySetupListener);
+                } else if (videoRetryCount >= videoMaxRetries) {
+                    console.warn('⚠️ 未能设置视频结束监听器');
+                    clearInterval(trySetupListener);
                 }
             }, 500);
         } catch (error) {

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         B站自定义推荐视频
 // @namespace    http://tampermonkey.net/
-// @version      1.3.0
+// @version      1.4.0
 // @description  在B站视频播放页右侧推荐区域添加指定UP主的视频
 // @author       You
 // @match        https://www.bilibili.com/video/*
@@ -19,14 +19,14 @@
     // ========== 配置区域 ==========
     // 在这里添加你想要推荐的UP主的UID（mid）
     const TARGET_UP_MIDS = [
-        '326427334','254463269','192063031','26108626','1537646108','1423802684','2000819931','563396855'
+        '326427334','254463269','192063031','26108626','1537646108','3546856531429665','1423802684','2000819931','563396855'
 
     ];
 
     // 推荐视频数量
     const RECOMMEND_COUNT = 15;
     // 原始推荐视频保留数量
-    const ORIGINAL_RECOMMEND_COUNT = 5;
+    const ORIGINAL_RECOMMEND_COUNT = 0;
     // ==============================
 
     // 存储获取到的视频
@@ -35,7 +35,24 @@
     // 添加CSS样式，提前隐藏原始推荐视频
     const style = document.createElement('style');
     style.textContent = `
+        /* 隐藏播放器结束界面的原始推荐 */
         .bpx-player-ending-related-item:not(.custom-end-recommend) {
+            display: none !important;
+        }
+        /* 隐藏右侧原始推荐视频卡片 */
+        .video-page-card-small:not(.custom-recommend-card) {
+            display: none !important;
+        }
+        /* 隐藏接下来播放 */
+        .next-play {
+            display: none !important;
+        }
+        /* 隐藏其他可能的原始推荐容器 */
+        .rec-list:not(.custom-recommend-section) {
+            display: none !important;
+        }
+        /* 隐藏推荐列表容器（但会被自定义内容覆盖） */
+        .video-page-card-small[data-report*="related_rec"] {
             display: none !important;
         }
     `;

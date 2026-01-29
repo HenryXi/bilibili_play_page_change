@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         B站自定义推荐视频
 // @namespace    http://tampermonkey.net/
-// @version      1.4.0
+// @version      1.5.0
 // @description  在B站视频播放页右侧推荐区域添加指定UP主的视频
 // @author       You
 // @match        https://www.bilibili.com/video/*
 // @grant        GM_xmlhttpRequest
 // @connect      api.bilibili.com
-// @run-at       document-end
+// @run-at       document-start
 // @updateURL    https://rawgithubusercontent.com/HenryXi/bilibili_play_page_change/raw/refs/heads/main/bilibili-custom-recommendations.user.js
 // @downloadURL  https://rawgithubusercontent.com/HenryXi/bilibili_play_page_change/raw/refs/heads/main/bilibili-custom-recommendations.user.js
 // @supportURL   https://github.com/HenryXi/bilibili_play_page_change/issues
@@ -32,31 +32,64 @@
     // 存储获取到的视频
     let allVideos = [];
 
-    // 添加CSS样式，提前隐藏原始推荐视频
-    const style = document.createElement('style');
-    style.textContent = `
-        /* 隐藏播放器结束界面的原始推荐 */
-        .bpx-player-ending-related-item:not(.custom-end-recommend) {
-            display: none !important;
-        }
-        /* 隐藏右侧原始推荐视频卡片 */
-        .video-page-card-small:not(.custom-recommend-card) {
-            display: none !important;
-        }
-        /* 隐藏接下来播放 */
-        .next-play {
-            display: none !important;
-        }
-        /* 隐藏其他可能的原始推荐容器 */
-        .rec-list:not(.custom-recommend-section) {
-            display: none !important;
-        }
-        /* 隐藏推荐列表容器（但会被自定义内容覆盖） */
-        .video-page-card-small[data-report*="related_rec"] {
-            display: none !important;
-        }
-    `;
-    document.head.appendChild(style);
+    // 添加CSS样式，提前隐藏原始推荐视频（立即执行，在DOM加载前）
+    if (document.head) {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* 隐藏播放器结束界面的原始推荐 */
+            .bpx-player-ending-related-item:not(.custom-end-recommend) {
+                display: none !important;
+            }
+            /* 隐藏右侧原始推荐视频卡片 */
+            .video-page-card-small:not(.custom-recommend-card) {
+                display: none !important;
+            }
+            /* 隐藏接下来播放 */
+            .next-play {
+                display: none !important;
+            }
+            /* 隐藏其他可能的原始推荐容器 */
+            .rec-list:not(.custom-recommend-section) {
+                display: none !important;
+            }
+            /* 隐藏推荐列表容器（但会被自定义内容覆盖） */
+            .video-page-card-small[data-report*="related_rec"] {
+                display: none !important;
+            }
+        `;
+        document.head.appendChild(style);
+    } else {
+        // 如果head还不存在，等待head出现后立即注入
+        const injectStyleWhenReady = setInterval(() => {
+            if (document.head) {
+                clearInterval(injectStyleWhenReady);
+                const style = document.createElement('style');
+                style.textContent = `
+                    /* 隐藏播放器结束界面的原始推荐 */
+                    .bpx-player-ending-related-item:not(.custom-end-recommend) {
+                        display: none !important;
+                    }
+                    /* 隐藏右侧原始推荐视频卡片 */
+                    .video-page-card-small:not(.custom-recommend-card) {
+                        display: none !important;
+                    }
+                    /* 隐藏接下来播放 */
+                    .next-play {
+                        display: none !important;
+                    }
+                    /* 隐藏其他可能的原始推荐容器 */
+                    .rec-list:not(.custom-recommend-section) {
+                        display: none !important;
+                    }
+                    /* 隐藏推荐列表容器（但会被自定义内容覆盖） */
+                    .video-page-card-small[data-report*="related_rec"] {
+                        display: none !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }, 10);
+    }
 
     // WBI签名相关
     const mixinKeyEncTab = [
@@ -721,17 +754,29 @@
         }
     }
 
-    // 监听页面变化（SPA路由切换）
-    let lastUrl = location.href;
-    new MutationObserver(() => {
-        const currentUrl = location.href;
-        if (currentUrl !== lastUrl && currentUrl.includes('/video/')) {
-            lastUrl = currentUrl;
-            console.log('🔄 检测到页面切换，重新加载推荐...');
-            setTimeout(main, 1000);
-        }
-    }).observe(document.body, { childList: true, subtree: true });
+    // 等待DOM加载完成后执行主函数
+    function startScript() {
+        // 监听页面变化（SPA路由切换）
+        let lastUrl = location.href;
+        new MutationObserver(() => {
+            const currentUrl = location.href;
+            if (currentUrl !== lastUrl && currentUrl.includes('/video/')) {
+                lastUrl = currentUrl;
+                console.log('🔄 检测到页面切换，重新加载推荐...');
+                setTimeout(main, 1000);
+            }
+        }).observe(document.body, { childList: true, subtree: true });
 
-    // 启动
-    main();
+        // 启动主函数
+        main();
+    }
+
+    // 根据DOM状态决定何时启动
+    if (document.readyState === 'loading') {
+        // DOM还在加载中，等待DOMContentLoaded事件
+        document.addEventListener('DOMContentLoaded', startScript);
+    } else {
+        // DOM已经加载完成，直接启动
+        startScript();
+    }
 })();
